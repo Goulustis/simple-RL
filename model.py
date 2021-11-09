@@ -32,10 +32,69 @@ class DeepQNetwork(nn.Module):
 
         return actions
 
+class PositionalEmbedding(nn.Module):
+    # for intuition https://medium.com/swlh/elegant-intuitions-behind-positional-encodings-dc48b4a4a5d1
+
+    def __init__(self, d_model, max_len=32):
+        super().__init__()
+
+        # Compute the positional encodings once in log space.
+        pe = torch.zeros(max_len, d_model).float()
+        pe.require_grad = False
+
+        position = torch.arange(0, max_len).float().unsqueeze(1)
+        div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
+
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        return self.pe[:, :x.size(1)]
+
+
+class Embedder(nn.Module):
+    def __init__(self, d_model=3, hidden_dim=32, max_len=32):
+        super().__init__()
+        self.no_act = torch.zeros(d_model)
+        self.no_act[0] = 1.
+        self.no_act = self.no_act.reshape(1, d_model)
+        self.pos_encod = PositionalEmbedding(d_model=d_model, max_len=32)
+        self.max_len = max_len
+
+        self.fc1 = nn.Linear(d_model, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+    
+    def pad(x):
+        n, f_dim = x.shape
+        tmp_x = torch.zeros(self.max_len, f_dim)
+        tmp_x[:n] = x
+        return tmp_x
+
+    def trans_input(x):
+        n, f_dim = x.shape
+        x = x + 1
+        idxs = list(range(n))
+        x_tmp = torch.zeros(n, 3)
+        x_tmp[idxs, x] = 1
+        return x_tmp 
+
+
+    def forward(x):
+        x = self.trans_input(x)
+        x = self.pad(x)
+        x = x + self.pos_encod(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        
+        return x
+
 
 class Agent:
     def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions,
-                 max_mem_size=100000, eps_end=0.05, eps_dec=5e-4):
+                 max_mem_size=100000, eps_end=0.05, eps_dec=5e-4, enc_h_dim = 32):
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = eps_end
@@ -48,11 +107,18 @@ class Agent:
         self.iter_cntr = 0
         self.replace_target = 100
 
+        self.state_len = 32
+        self.enc_h_dim = enc_h_dim
+        input_dims = (enc_h_dim, )
+
+        self.state_embedder = Embedder(n_actions+1, 
+                                       hidden_dim=self.enc_h_dim, 
+                                       state_len=max_len)
+
         self.Q_eval = DeepQNetwork(lr, n_actions=n_actions,
                                    input_dims=input_dims,
                                    fc1_dims=256, fc2_dims=256)
         
-
         # target network
         self.Q_target = DeepQNetwork(lr, n_actions=n_actions,
                                    input_dims=input_dims,
@@ -88,6 +154,11 @@ class Agent:
             action = np.random.choice(self.action_space)
 
         return action
+
+    def process_state(self, state):
+        ## state = only opponent's history
+
+
 
     def learn(self):
         if self.mem_cntr < self.batch_size:

@@ -1,4 +1,4 @@
-import environment as gym
+from environment import Game
 import matplotlib.pyplot as plt
 from model import Agent
 import numpy as np
@@ -38,26 +38,46 @@ def plotLearning(x, scores, epsilons, filename, lines=None):
 
 
 if __name__ == '__main__':
-    env = gym.make('LunarLander-v2')
-    agent = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=4, eps_end=0.01,
+    env = Game() #gym.make('LunarLander-v2')
+    agent1 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=4, eps_end=0.01,
                   input_dims=[8], lr=0.001)
-    scores, eps_history = [], []
+    agent2 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=4, eps_end=0.01,
+                  input_dims=[8], lr=0.001)
+    scores1, eps_history1 = [], []
+    scores2, eps_history2 = [], []
     n_games = 500
     
     for i in range(n_games):
         score = 0
         done = False
         observation = env.reset()
+        p1_hist, p2_hist = observation
         while not done:
-            action = agent.choose_action(observation)
+            action1 = agent1.choose_action(p2_hist)
+            action2 = agent2.choose_action(p1_hist)
+
             observation_, reward, done, info = env.step(action)
-            score += reward
-            agent.store_transition(observation, action, reward, 
-                                    observation_, done)
-            agent.learn()
-            observation = observation_
-        scores.append(score)
-        eps_history.append(agent.epsilon)
+
+            rw1, rw2 = reward
+            score1 += rw1
+            score2 += rw2 
+
+            p1_hist_, p2_hist_ = observation_
+
+            agent1.store_transition(p2_hist, action1, rw1, 
+                                    p2_hist_, done)
+
+            agent2.store_transition(p1_hist, action2, rw2,
+                                    p1_hist_, done)
+            agent1.learn()
+            agent2.learn()
+            p1_hist, p2_hist = observation_
+
+        scores1.append(score)
+        eps_history1.append(agent.epsilon)
+
+        scores2.append(score)
+        eps_history2.append(agent.epsilon)
 
         avg_score = np.mean(scores[-100:])
 
@@ -67,5 +87,3 @@ if __name__ == '__main__':
     x = [i+1 for i in range(n_games)]
     filename = 'lunar_lander.png'
     plotLearning(x, scores, eps_history, filename)
-
-
