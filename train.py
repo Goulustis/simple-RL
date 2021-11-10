@@ -45,6 +45,7 @@ if __name__ == '__main__':
                   input_dims=[8], lr=0.001, player_code = 2)
     
     up_targ_iter = 50
+    save_model_iter = 5000
     scores1, eps_history1 = [], []
     scores2, eps_history2 = [], []
     n_games = 50000
@@ -79,6 +80,10 @@ if __name__ == '__main__':
         if i%up_targ_iter == 0 and i > 0:
             agent1.update_targ_model()
             agent2.update_targ_model()
+        
+        if i%save_model_iter == 0 and i > 0:
+            agent1.save_models(i)
+            agent2.save_models(i)
 
         scores1.append(score1)
         eps_history1.append(agent1.epsilon)
@@ -95,6 +100,8 @@ if __name__ == '__main__':
         print('episode ', i, 'score2 %.2f' % score2,
                 'average score2 %.2f' % avg_score,
                 'epsilon2 %.2f' % agent2.epsilon)
+    agent1.save_models("final")
+    agent2.save_models("final")
     x = [i+1 for i in range(n_games)]
     plotLearning(x, scores1, eps_history1, "p1.png")
     plotLearning(x, scores2, eps_history1, "p2.png")
