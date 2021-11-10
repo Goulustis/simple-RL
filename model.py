@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import math
 
-# original code from https://github.com/philtabor/Youtube-Code-Repository/blob/master/ReinforcementLearning/DeepQLearning/simple_dqn_torch_2020.py
+# original code from https://github.com/philtabor/Youtube-Code-Repository/blob/master/ReinforcementLearning/DeepQLearning/simple_dqn_T_2020.py
 
 # target network modification:
 # https://pythonprogramming.net/training-deep-q-learning-dqn-reinforcement-learning-python-tutorial/
@@ -39,14 +40,14 @@ class PositionalEmbedding(nn.Module):
         super().__init__()
 
         # Compute the positional encodings once in log space.
-        pe = torch.zeros(max_len, d_model).float()
+        pe = T.zeros(max_len, d_model).float()
         pe.require_grad = False
 
-        position = torch.arange(0, max_len).float().unsqueeze(1)
-        div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
+        position = T.arange(0, max_len).float().unsqueeze(1)
+        div_term = (T.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
 
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
+        pe[:, 0::2] = T.sin(position * div_term)
+        pe[:, 1::2] = T.cos(position * div_term)
 
         pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
@@ -55,10 +56,10 @@ class PositionalEmbedding(nn.Module):
         return self.pe[:, :x.size(1)]
 
 
-class Embedder(nn.Module):
+class Encoder(nn.Module):
     def __init__(self, d_model=3, hidden_dim=32, max_len=32):
         super().__init__()
-        self.no_act = torch.zeros(d_model)
+        self.no_act = T.zeros(d_model)
         self.no_act[0] = 1.
         self.no_act = self.no_act.reshape(1, d_model)
         self.pos_encod = PositionalEmbedding(d_model=d_model, max_len=32)
@@ -69,7 +70,7 @@ class Embedder(nn.Module):
     
     def pad(x):
         n, f_dim = x.shape
-        tmp_x = torch.zeros(self.max_len, f_dim)
+        tmp_x = T.zeros(self.max_len, f_dim)
         tmp_x[:n] = x
         return tmp_x
 
@@ -77,14 +78,14 @@ class Embedder(nn.Module):
         n, f_dim = x.shape
         x = x + 1
         idxs = list(range(n))
-        x_tmp = torch.zeros(n, 3)
+        x_tmp = T.zeros(n, 3)
         x_tmp[idxs, x] = 1
         return x_tmp 
     
     def process_input(self, x):
         return self.pad(self.trans_input(x))
 
-    def forward(x, processed = True):
+    def forward(self, x, processed = True):
         # processed --- is the input processed already?
         if not processed:
             x = self.trans_input(x)
@@ -99,7 +100,7 @@ class Embedder(nn.Module):
 class Agent:
     def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions,
                  max_mem_size=100000, eps_end=0.05, eps_dec=5e-4, enc_h_dim=32,
-                 player_code = "1"):
+                 player_code = "1", state_len = 32):
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = eps_end
@@ -113,13 +114,13 @@ class Agent:
         self.replace_target = 100
         self.player_code = str(player_code)
 
-        self.state_len = 32
+        self.state_len = state_len
         self.enc_h_dim = enc_h_dim
         input_dims = (enc_h_dim, )
 
-        self.encoder = Embedder(n_actions+1, 
+        self.encoder = Encoder(n_actions+1, 
                                 hidden_dim=self.enc_h_dim, 
-                                state_len=max_len)
+                                state_len=state_len)
 
         self.Q_eval = DeepQNetwork(lr, n_actions=n_actions,
                                    input_dims=input_dims,
@@ -200,4 +201,9 @@ class Agent:
 
         def update_targ_model(self):
             self.Q_target.load_state_dict(self.Q_eval.state_dict())
+        
+
+        def save_models(self, game_iter):
+            T.save("checkpoint/player_%s/q_fnc_%s.pth"%(self.player_code, game_iter), self.Q_eval)
+            T.save("checkpoint/player_%s/encoder_%s.pth"%(self.player_code, game_iter), self.encoder)
 

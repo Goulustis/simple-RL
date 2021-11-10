@@ -80,17 +80,21 @@ if __name__ == '__main__':
             agent1.update_targ_model()
             agent2.update_targ_model()
 
-        scores1.append(score)
-        eps_history1.append(agent.epsilon)
+        scores1.append(score1)
+        eps_history1.append(agent1.epsilon)
 
-        scores2.append(score)
-        eps_history2.append(agent.epsilon)
+        scores2.append(score1)
+        eps_history2.append(agent1.epsilon)
 
-        avg_score = np.mean(scores[-100:])
+        avg_score = np.mean(scores1[-100:])
 
-        print('episode ', i, 'score %.2f' % score,
-                'average score %.2f' % avg_score,
-                'epsilon %.2f' % agent.epsilon)
+        print('episode ', i, 'score1 %.2f' % score1,
+                'average score1 %.2f' % avg_score,
+                'epsilon1 %.2f' % agent1.epsilon)
+        
+        print('episode ', i, 'score2 %.2f' % score2,
+                'average score2 %.2f' % avg_score,
+                'epsilon2 %.2f' % agent2.epsilon)
     x = [i+1 for i in range(n_games)]
-    filename = 'lunar_lander.png'
-    plotLearning(x, scores, eps_history, filename)
+    plotLearning(x, scores1, eps_history1, "p1.png")
+    plotLearning(x, scores2, eps_history1, "p2.png")

@@ -26,9 +26,10 @@ class Game:
         self.p2_act_hist = []
 
         new_obs = (self.p1_act_hist, self.p2_act_hist)
+        return new_obs
     
 
-    def step(p1_act, p2_act):
+    def step(self, p1_act, p2_act):
         self.curr_iter += 1 
 
         p1_rw = self.p1_mtx[p1_act, p2_act]
