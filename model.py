@@ -80,11 +80,15 @@ class Embedder(nn.Module):
         x_tmp = torch.zeros(n, 3)
         x_tmp[idxs, x] = 1
         return x_tmp 
+    
+    def process_input(self, x):
+        return self.pad(self.trans_input(x))
 
-
-    def forward(x):
-        x = self.trans_input(x)
-        x = self.pad(x)
+    def forward(x, processed = True):
+        # processed --- is the input processed already?
+        if not processed:
+            x = self.trans_input(x)
+            x = self.pad(x)
         x = x + self.pos_encod(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -94,7 +98,8 @@ class Embedder(nn.Module):
 
 class Agent:
     def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions,
-                 max_mem_size=100000, eps_end=0.05, eps_dec=5e-4, enc_h_dim = 32):
+                 max_mem_size=100000, eps_end=0.05, eps_dec=5e-4, enc_h_dim=32,
+                 player_code = "1"):
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = eps_end
@@ -106,14 +111,15 @@ class Agent:
         self.mem_cntr = 0
         self.iter_cntr = 0
         self.replace_target = 100
+        self.player_code = str(player_code)
 
         self.state_len = 32
         self.enc_h_dim = enc_h_dim
         input_dims = (enc_h_dim, )
 
-        self.state_embedder = Embedder(n_actions+1, 
-                                       hidden_dim=self.enc_h_dim, 
-                                       state_len=max_len)
+        self.encoder = Embedder(n_actions+1, 
+                                hidden_dim=self.enc_h_dim, 
+                                state_len=max_len)
 
         self.Q_eval = DeepQNetwork(lr, n_actions=n_actions,
                                    input_dims=input_dims,
@@ -137,8 +143,8 @@ class Agent:
 
     def store_transition(self, state, action, reward, state_, terminal):
         index = self.mem_cntr % self.mem_size
-        self.state_memory[index] = state
-        self.new_state_memory[index] = state_
+        self.state_memory[index] = self.encoder.process_input(state).numpy()
+        self.new_state_memory[index] = self.encoder.process_input(state_).numpy()
         self.reward_memory[index] = reward
         self.action_memory[index] = action
         self.terminal_memory[index] = terminal
@@ -154,9 +160,6 @@ class Agent:
             action = np.random.choice(self.action_space)
 
         return action
-
-    def process_state(self, state):
-        ## state = only opponent's history
 
 
 
@@ -193,4 +196,8 @@ class Agent:
         self.iter_cntr += 1
         self.epsilon = self.epsilon - self.eps_dec \
             if self.epsilon > self.eps_min else self.eps_min
+        
+
+        def update_targ_model(self):
+            self.Q_target.load_state_dict(self.Q_eval.state_dict())
 

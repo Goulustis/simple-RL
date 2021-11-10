@@ -40,15 +40,18 @@ def plotLearning(x, scores, epsilons, filename, lines=None):
 if __name__ == '__main__':
     env = Game() #gym.make('LunarLander-v2')
     agent1 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=4, eps_end=0.01,
-                  input_dims=[8], lr=0.001)
+                  input_dims=[8], lr=0.001, player_code = 1)
     agent2 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=4, eps_end=0.01,
-                  input_dims=[8], lr=0.001)
+                  input_dims=[8], lr=0.001, player_code = 2)
+    
+    up_targ_iter = 50
     scores1, eps_history1 = [], []
     scores2, eps_history2 = [], []
-    n_games = 500
+    n_games = 50000
     
     for i in range(n_games):
-        score = 0
+        score1 = 0
+        score2 = 0
         done = False
         observation = env.reset()
         p1_hist, p2_hist = observation
@@ -72,6 +75,10 @@ if __name__ == '__main__':
             agent1.learn()
             agent2.learn()
             p1_hist, p2_hist = observation_
+
+        if i%up_targ_iter == 0 and i > 0:
+            agent1.update_targ_model()
+            agent2.update_targ_model()
 
         scores1.append(score)
         eps_history1.append(agent.epsilon)
