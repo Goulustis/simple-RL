@@ -253,11 +253,11 @@ class Agent:
             if self.epsilon > self.eps_min else self.eps_min
         
 
-        def update_targ_model(self):
-            self.Q_target.load_state_dict(self.Q_eval.state_dict())
-        
+    def update_targ_model(self):
+        self.Q_target.load_state_dict(self.Q_eval.state_dict())
+    
 
-        def save_models(self, game_iter):
-            T.save("checkpoint/player_%s/q_fnc_%s.pth"%(self.player_code, game_iter), self.Q_eval)
-            T.save("checkpoint/player_%s/encoder_%s.pth"%(self.player_code, game_iter), self.encoder)
+    def save_models(self, game_iter):
+        T.save("checkpoint/player_%s/q_fnc_%s.pth"%(self.player_code, game_iter), self.Q_eval)
+        T.save("checkpoint/player_%s/encoder_%s.pth"%(self.player_code, game_iter), self.encoder)
 

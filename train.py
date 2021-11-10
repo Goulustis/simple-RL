@@ -46,7 +46,7 @@ if __name__ == '__main__':
     agent2 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=2, eps_end=0.01,
                   input_dims=[8], lr=0.001, player_code = 2)
     
-    up_targ_iter = 5
+    up_targ_iter = 1
     scores1, eps_history1 = [], []
     scores2, eps_history2 = [], []
     n_games = 5000
