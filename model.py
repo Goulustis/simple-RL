@@ -74,6 +74,9 @@ class PositionalEncoding(nn.Module):
         pe = pe.unsqueeze(0)#.transpose(0, 1)        
         self.register_buffer('pe', pe)
 
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
     def forward(self, x):
         seq_len = x.shape[1]
         # x = x + self.pe[:x.size(0), :]
@@ -128,6 +131,8 @@ class Encoder(nn.Module):
         if not processed:
             x = self.trans_input(x)
             x = self.pad(x)
+            if len(x) != 3:
+                x = x.unsqueeze(0).to(self.device)
         x = self.pos_encod(x) #x + self.pos_encod(x)
         x = x.reshape(len(x), -1)
         x = F.relu(self.fc1(x))
@@ -200,7 +205,8 @@ class Agent:
 
     def choose_action(self, observation):
         if np.random.random() > self.epsilon:
-            state = T.tensor([observation]).to(self.Q_eval.device)
+            # state = T.tensor([observation]).to(self.Q_eval.device)
+            state = self.encoder(observation, processed=False)
             actions = self.Q_eval.forward(state)
             action = T.argmax(actions).item()
         else:
