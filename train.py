@@ -45,10 +45,11 @@ if __name__ == '__main__':
                   input_dims=[8], lr=0.001, player_code = 2)
     
     up_targ_iter = 50
-    save_model_iter = 5000
     scores1, eps_history1 = [], []
     scores2, eps_history2 = [], []
     n_games = 50000
+
+    save_model_iter = int(n_games/12)
     
     for i in range(n_games):
         score1 = 0
