@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 
 class Game:
     def __init__(self, game_lim=10000, act_hist_lim = 256):
@@ -26,7 +27,7 @@ class Game:
         self.p1_act_hist = []
         self.p2_act_hist = []
 
-        new_obs = (self.p1_act_hist, self.p2_act_hist)
+        new_obs = (deepcopy(self.p1_act_hist), deepcopy(self.p2_act_hist))
         return new_obs
     
 
@@ -44,5 +45,5 @@ class Game:
             self.p2_act_hist.pop(0)
 
         done = self.curr_iter > self.game_lim
-        new_obs = (self.p1_act_hist, self.p2_act_hist)
+        new_obs = (deepcopy(self.p1_act_hist), deepcopy(self.p2_act_hist))
         return new_obs, (p1_rw, p2_rw), done

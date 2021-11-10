@@ -102,6 +102,8 @@ class Encoder(nn.Module):
         return tmp_x
 
     def trans_input(self, x):
+        if len(x) == 0:
+            return T.zeros(1,3)
         x = T.tensor(x).unsqueeze(0)
         n, f_dim = x.shape
         x = x + 1
