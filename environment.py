@@ -1,7 +1,7 @@
 import numpy as np
 
 class Game:
-    def __init__(self, game_lim=10000, step_rem = 32, act_hist_lim = 256):
+    def __init__(self, game_lim=10000, act_hist_lim = 256):
         self.p1_score = 0
         self.p2_score = 0
         
@@ -16,6 +16,7 @@ class Game:
         self.p2_act_hist = []
 
         self.game_lim = game_lim
+        self.act_hist_lim = act_hist_lim
         self.curr_iter = 0
 
     def reset(self):

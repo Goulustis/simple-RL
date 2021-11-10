@@ -68,8 +68,12 @@ class Encoder(nn.Module):
         self.fc1 = nn.Linear(d_model, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
     
-    def pad(x):
+    def pad(self, x):
         n, f_dim = x.shape
+
+        if n >= self.max_len:
+            return x[:, -self.max_len:]
+
         tmp_x = T.zeros(self.max_len, f_dim)
         tmp_x[:n] = x
         return tmp_x
@@ -114,9 +118,9 @@ class Agent:
         self.replace_target = 100
         self.player_code = str(player_code)
 
-        self.state_len = state_len
-        self.enc_h_dim = enc_h_dim
-        input_dims = (enc_h_dim, )
+        self.state_len = state_len  # length of other player to consider
+        self.enc_h_dim = enc_h_dim  # hidden dim for encoder
+        input_dims = (enc_h_dim,)  
 
         self.encoder = Encoder(n_actions+1, 
                                 hidden_dim=self.enc_h_dim, 
@@ -142,6 +146,7 @@ class Agent:
         self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
         self.terminal_memory = np.zeros(self.mem_size, dtype=np.bool)
 
+
     def store_transition(self, state, action, reward, state_, terminal):
         index = self.mem_cntr % self.mem_size
         self.state_memory[index] = self.encoder.process_input(state).numpy()
@@ -151,6 +156,8 @@ class Agent:
         self.terminal_memory[index] = terminal
 
         self.mem_cntr += 1
+
+
 
     def choose_action(self, observation):
         if np.random.random() > self.epsilon:

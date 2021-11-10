@@ -59,7 +59,7 @@ if __name__ == '__main__':
             action1 = agent1.choose_action(p2_hist)
             action2 = agent2.choose_action(p1_hist)
 
-            observation_, reward, done, info = env.step(action)
+            observation_, reward, done, info = env.step(action1, action2)
 
             rw1, rw2 = reward
             score1 += rw1
