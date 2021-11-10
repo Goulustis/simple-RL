@@ -69,13 +69,15 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = T.sin(position * div_term)        
         pe[:, 1::2] = T.cos(position * div_term)     
 
-        pe = pe[:, :d_model]
+        pe = (pe[:, :d_model]*0.05).float()
 
-        pe = pe.unsqueeze(0).transpose(0, 1)        
+        pe = pe.unsqueeze(0)#.transpose(0, 1)        
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        x = x + self.pe[:x.size(0), :]        
+        seq_len = x.shape[1]
+        # x = x + self.pe[:x.size(0), :]
+        x = x + self.pe[:, :seq_len, :]
         return x #self.dropout(x)
 
 
@@ -85,17 +87,19 @@ class Encoder(nn.Module):
         self.no_act = T.zeros(d_model)
         self.no_act[0] = 1.
         self.no_act = self.no_act.reshape(1, d_model)
-        self.pos_encod = PositionalEncoding(d_model=d_model, max_len=32)#PositionalEmbedding(d_model=d_model, max_len=32)
+        self.pos_encod = PositionalEncoding(d_model=d_model)#PositionalEmbedding(d_model=d_model, max_len=32)
         self.max_len = max_len
 
-        self.fc1 = nn.Linear(d_model, hidden_dim)
+        self.fc1 = nn.Linear(d_model*max_len, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
     
     def pad(self, x):
         n, f_dim = x.shape
 
         if n >= self.max_len:
-            return x[:, -self.max_len:]
+            return x[-self.max_len:, :]
 
         tmp_x = T.zeros(self.max_len, f_dim)
         tmp_x[:n] = x
@@ -103,9 +107,11 @@ class Encoder(nn.Module):
 
     def trans_input(self, x):
         if len(x) == 0:
-            return T.zeros(1,3)
-        x = T.tensor(x).unsqueeze(0)
-        n, f_dim = x.shape
+            x_tmp = T.zeros(1,3)
+            x_tmp[0,0] = 1
+            return x_tmp
+        x = T.tensor(x)#.unsqueeze(0)
+        n = len(x)
         x = x + 1
         idxs = list(range(n))
         x_tmp = T.zeros(n, 3)
@@ -113,7 +119,9 @@ class Encoder(nn.Module):
         return x_tmp 
     
     def process_input(self, x):
-        return self.pad(self.trans_input(x))
+        trans_inp = self.trans_input(x)
+        pad_inp = self.pad(trans_inp)
+        return pad_inp
 
     def forward(self, x, processed = True):
         # processed --- is the input processed already?
@@ -121,6 +129,7 @@ class Encoder(nn.Module):
             x = self.trans_input(x)
             x = self.pad(x)
         x = self.pos_encod(x) #x + self.pos_encod(x)
+        x = x.reshape(len(x), -1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         
@@ -129,7 +138,7 @@ class Encoder(nn.Module):
 
 class Agent:
     def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions,
-                 max_mem_size=100000, eps_end=0.05, eps_dec=5e-4, enc_h_dim=32,
+                 max_mem_size=100000, eps_end=0.05, eps_dec=5e-4, enc_h_dim=128,
                  player_code = "1", state_len = 32):
         self.gamma = gamma
         self.epsilon = epsilon
@@ -221,6 +230,8 @@ class Agent:
         terminal_batch = T.tensor(
                 self.terminal_memory[batch]).to(self.Q_eval.device)
 
+        state_batch = self.encoder(state_batch)
+        new_state_batch = self.encoder(new_state_batch)
         q_eval = self.Q_eval.forward(state_batch)[batch_index, action_batch]
         q_next = self.Q_target.forward(new_state_batch)
         q_next[terminal_batch] = 0.0
