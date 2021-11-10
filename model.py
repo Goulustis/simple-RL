@@ -52,6 +52,9 @@ class PositionalEmbedding(nn.Module):
         pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
     def forward(self, x):
         return self.pe[:, :x.size(1)]
 
