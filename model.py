@@ -33,30 +33,50 @@ class DeepQNetwork(nn.Module):
 
         return actions
 
-class PositionalEmbedding(nn.Module):
-    # for intuition https://medium.com/swlh/elegant-intuitions-behind-positional-encodings-dc48b4a4a5d1
+# class PositionalEmbedding(nn.Module):
+#     # for intuition https://medium.com/swlh/elegant-intuitions-behind-positional-encodings-dc48b4a4a5d1
 
-    def __init__(self, d_model, max_len=32):
-        super().__init__()
+#     def __init__(self, d_model, max_len=32):
+#         super().__init__()
 
-        # Compute the positional encodings once in log space.
-        pe = T.zeros(max_len, d_model).float()
-        pe.require_grad = False
+#         # Compute the positional encodings once in log space.
+#         pe = T.zeros(max_len, d_model).float()
+#         pe.require_grad = False
 
-        position = T.arange(0, max_len).float().unsqueeze(1)
-        div_term = (T.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
+#         position = T.arange(0, max_len).float().unsqueeze(1)
+#         div_term = (T.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
 
-        pe[:, 0::2] = T.sin(position * div_term)
-        pe[:, 1::2] = T.cos(position * div_term)
+#         pe[:, 0::2] = T.sin(position * div_term)
+#         pe[:, 1::2] = T.cos(position * div_term)
 
-        pe = pe.unsqueeze(0)
+#         pe = pe.unsqueeze(0)
+#         self.register_buffer('pe', pe)
+
+#         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+#         self.to(self.device)
+
+#     def forward(self, x):
+#         return self.pe[:, :x.size(1)]
+
+class PositionalEncoding(nn.Module):    
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        # self.dropout = nn.Dropout(p=dropout)
+        d_model_use = d_model if d_model%2 == 0 else d_model + 1
+        pe = T.zeros(max_len, d_model_use)
+        position = T.arange(0, max_len,dtype=T.float).unsqueeze(1)
+        div_term = T.exp(T.arange(0, d_model_use, 2).float()*(-math.log(10000.0) / d_model))        
+        pe[:, 0::2] = T.sin(position * div_term)        
+        pe[:, 1::2] = T.cos(position * div_term)     
+
+        pe = pe[:, :d_model]
+
+        pe = pe.unsqueeze(0).transpose(0, 1)        
         self.register_buffer('pe', pe)
 
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
-        self.to(self.device)
-
     def forward(self, x):
-        return self.pe[:, :x.size(1)]
+        x = x + self.pe[:x.size(0), :]        
+        return x #self.dropout(x)
 
 
 class Encoder(nn.Module):
@@ -65,7 +85,7 @@ class Encoder(nn.Module):
         self.no_act = T.zeros(d_model)
         self.no_act[0] = 1.
         self.no_act = self.no_act.reshape(1, d_model)
-        self.pos_encod = PositionalEmbedding(d_model=d_model, max_len=32)
+        self.pos_encod = PositionalEncoding(d_model=d_model, max_len=32)#PositionalEmbedding(d_model=d_model, max_len=32)
         self.max_len = max_len
 
         self.fc1 = nn.Linear(d_model, hidden_dim)
@@ -81,7 +101,8 @@ class Encoder(nn.Module):
         tmp_x[:n] = x
         return tmp_x
 
-    def trans_input(x):
+    def trans_input(self, x):
+        x = T.tensor(x).unsqueeze(0)
         n, f_dim = x.shape
         x = x + 1
         idxs = list(range(n))
@@ -97,7 +118,7 @@ class Encoder(nn.Module):
         if not processed:
             x = self.trans_input(x)
             x = self.pad(x)
-        x = x + self.pos_encod(x)
+        x = self.pos_encod(x) #x + self.pos_encod(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         
@@ -127,7 +148,7 @@ class Agent:
 
         self.encoder = Encoder(n_actions+1, 
                                 hidden_dim=self.enc_h_dim, 
-                                state_len=state_len)
+                                max_len=state_len)
 
         self.Q_eval = DeepQNetwork(lr, n_actions=n_actions,
                                    input_dims=input_dims,
@@ -141,9 +162,13 @@ class Agent:
         self.Q_target.load_state_dict(self.Q_eval.state_dict())
 
 
-        self.state_memory = np.zeros((self.mem_size, *input_dims),
+        # self.state_memory = np.zeros((self.mem_size, *input_dims),
+        #                              dtype=np.float32)
+        # self.new_state_memory = np.zeros((self.mem_size, *input_dims),
+        #                                  dtype=np.float32)
+        self.state_memory = np.zeros((self.mem_size, *(state_len, n_actions+1)),
                                      dtype=np.float32)
-        self.new_state_memory = np.zeros((self.mem_size, *input_dims),
+        self.new_state_memory = np.zeros((self.mem_size, *(state_len, n_actions+1)),
                                          dtype=np.float32)
         self.action_memory = np.zeros(self.mem_size, dtype=np.int32)
         self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)

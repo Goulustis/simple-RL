@@ -39,9 +39,9 @@ def plotLearning(x, scores, epsilons, filename, lines=None):
 
 if __name__ == '__main__':
     env = Game() #gym.make('LunarLander-v2')
-    agent1 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=4, eps_end=0.01,
+    agent1 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=2, eps_end=0.01,
                   input_dims=[8], lr=0.001, player_code = 1)
-    agent2 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=4, eps_end=0.01,
+    agent2 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=2, eps_end=0.01,
                   input_dims=[8], lr=0.001, player_code = 2)
     
     up_targ_iter = 50
@@ -61,7 +61,7 @@ if __name__ == '__main__':
             action1 = agent1.choose_action(p2_hist)
             action2 = agent2.choose_action(p1_hist)
 
-            observation_, reward, done, info = env.step(action1, action2)
+            observation_, reward, done = env.step(action1, action2)
 
             rw1, rw2 = reward
             score1 += rw1
