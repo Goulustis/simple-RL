@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy
 
 class Game:
-    def __init__(self, game_lim=10000, act_hist_lim = 256):
+    def __init__(self, game_lim=1000, act_hist_lim = 256):
         self.p1_score = 0
         self.p2_score = 0
         

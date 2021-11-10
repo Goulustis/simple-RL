@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from model import Agent
 import numpy as np
 
+from tqdm import tqdm
+
 def plotLearning(x, scores, epsilons, filename, lines=None):
     fig=plt.figure()
     ax=fig.add_subplot(111, label="1")
@@ -44,14 +46,14 @@ if __name__ == '__main__':
     agent2 = Agent(gamma=0.99, epsilon=1.0, batch_size=64, n_actions=2, eps_end=0.01,
                   input_dims=[8], lr=0.001, player_code = 2)
     
-    up_targ_iter = 50
+    up_targ_iter = 5
     scores1, eps_history1 = [], []
     scores2, eps_history2 = [], []
-    n_games = 50000
+    n_games = 5000
 
     save_model_iter = int(n_games/12)
     
-    for i in range(n_games):
+    for i in tqdm(range(n_games)):
         score1 = 0
         score2 = 0
         done = False
